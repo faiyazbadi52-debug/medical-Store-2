@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jan Aushadhi Store - Public Catalog</title>
+    <link rel="stylesheet" href="/css/global.css">
+    <style>
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+        .med-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .med-card h3 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+        .med-card .generic { font-style: italic; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+        .med-card .price { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <a href="/" class="logo">Jan Aushadhi Kendra</a>
+            <nav>
+                <a href="/" class="active">Store Catalog</a>
+                <a href="/admin">Go to Admin Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Available High-Quality Generic Medicines</h2>
+        <div class="store-grid" id="publicCatalog"></div>
+    </main>
+
+    <script>
+        async function loadStore() {
+            const res = await fetch('/api/medicines');
+            const data = await res.json();
+            document.getElementById('publicCatalog').innerHTML = data.map(m => `
+                <div class="med-card">
+                    <h3>${m.name}</h3>
+                    <div class="generic">${m.genericName}</div>
+                    <div style="margin-bottom: 1rem;"><span class="status-badge ${m.stock > 0 ? 'ok':'low'}">${m.stock > 0 ? 'In Stock':'Out of Stock'}</span></div>
+                    <div class="price">₹${m.price.toFixed(2)}</div>
+                </div>
+            `).join('');
+        }
+        window.onload = loadStore;
+    </script>
+</body>
+</html>

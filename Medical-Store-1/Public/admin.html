@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jan Aushadhi Kendra - Admin Console</title>
+    <link rel="stylesheet" href="/css/global.css">
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <a href="/" class="logo">Jan Aushadhi Admin System</a>
+            <nav>
+                <a href="/">Store Catalog</a>
+                <a href="/admin" class="active">Management Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="metrics-row">
+            <div class="metric-box"><h4>Total Skus Cataloged</h4><p id="cntTotal">0</p></div>
+            <div class="metric-box"><h4>Low Stock Warnings</h4><p id="cntLow" style="color: #ea580c;">0</p></div>
+            <div class="metric-box"><h4>Out of Stock Alert</h4><p id="cntOut" style="color: var(--danger);">0</p></div>
+        </div>
+
+        <div class="admin-grid">
+            <section class="panel-card">
+                <h3 style="margin-bottom: 1rem; font-size:1.1rem;">Add Stock Record</h3>
+                <form id="medForm">
+                    <div class="form-group"><label>SKU/ID Code</label><input type="text" id="sku" class="form-control" required placeholder="e.g., JAA-0021"></div>
+                    <div class="form-group"><label>Brand Name</label><input type="text" id="name" class="form-control" required placeholder="e.g., Paracetamol 500mg"></div>
+                    <div class="form-group"><label>Chemical Composition</label><input type="text" id="genericName" class="form-control" required placeholder="e.g., Acetaminophen"></div>
+                    <div class="form-group">
+                        <label>Class Category</label>
+                        <select id="category" class="form-control">
+                            <option value="Analgesics">Analgesics</option>
+                            <option value="Antibiotics">Antibiotics</option>
+                            <option value="Cardiology">Cardiology</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Price (₹)</label><input type="number" step="0.01" id="price" class="form-control" required></div>
+                    <div class="form-group"><label>Current Inventory Units</label><input type="number" id="stock" class="form-control" required></div>
+                    <button type="submit" class="btn">Write to Database</button>
+                </form>
+            </section>
+
+            <section class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Medicine Info</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock Level</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody"></tbody>
+                </table>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        async function refreshDashboard() {
+            // Fetch Metrics counters
+            const summaryRes = await fetch('/api/dashboard-summary');
+            const summary = await summaryRes.json();
+            document.getElementById('cntTotal').innerText = summary.totalItems;
+            document.getElementById('cntLow').innerText = summary.lowStockItems;
+            document.getElementById('cntOut').innerText = summary.outOfStockItems;
+
+            // Fetch Table Records
+            const medRes = await fetch('/api/medicines');
+            const medicines = await medRes.json();
+            
+            document.getElementById('adminTableBody').innerHTML = medicines.map(m => `
+                <tr>
+                    <td style="font-weight:600; color:var(--text-muted);">${m.sku}</td>
+                    <td>
+                        <div style="font-weight: 600;">${m.name}</div>
+                        <div style="font-size:0.85rem; color:var(--text-muted);">${m.genericName}</div>
+                    </td>
+                    <td>${m.category}</td>
+                    <td style="font-weight: 600;">₹${m.price.toFixed(2)}</td>
+                    <td>
+                        <div style="margin-bottom: 4px; font-weight:600;">${m.stock} units</div>
+                        <span class="status-badge ${m.stock > 20 ? 'ok' : 'low'}">${m.stock > 20 ? 'Good Condition' : 'Restock Needed'}</span>
+                    </td>
+                    <td><button class="btn-danger" onclick="deleteItem('${m._id}')">Remove</button></td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('medForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                sku: document.getElementById('sku').value,
+                name: document.getElementById('name').value,
+                genericName: document.getElementById('genericName').value,
+                category: document.getElementById('category').value,
+                price: parseFloat(document.getElementById('price').value),
+                stock: parseInt(document.getElementById('stock').value)
+            };
+
+            const res = await fetch('/api/medicines', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                document.getElementById('medForm').reset();
+                refreshDashboard();
+            }
+        });
+
+        async function deleteItem(id) {
+            if(confirm("Are you sure you want to remove this record from the database inventory?")) {
+                await fetch(`/api/medicines/${id}`, { method: 'DELETE' });
+                refreshDashboard();
+            }
+        }
+
+        window.onload = refreshDashboard;
+    </script>
+</body>
+</html>
